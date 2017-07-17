@@ -2,9 +2,8 @@ package cache
 
 import "time"
 
+// Meta contains the time a item has been created
 type Meta interface {
-	Boot() (error)
-
 	List() map[string]time.Time
 	Put(key string) error
 	IsExpired(key string, duration time.Duration) bool

@@ -1,45 +1,45 @@
 package file
 
 import (
-	"io"
 	"os"
 	"strings"
-	"github.com/joostlawerman/cache"
-	"errors"
 	"path/filepath"
+	"io"
+	"errors"
+	"github.com/joostlawerman/cache"
 )
 
-func Driver(location string, fileMode os.FileMode) cache.Driver {
+type Driver struct {
+	Location string
+	meta     *Meta
+}
+
+func NewDriver(location string) (*Driver, error) {
 	location = strings.TrimSuffix(location, "/")
 
 	_, err := os.Stat(location)
 	if os.IsNotExist(err) {
-		os.Mkdir(location, fileMode)
+		os.MkdirAll(location, 0777)
 	}
-	return &File{
+
+	meta, err := NewMeta(location + "/")
+	if err != nil {
+		return nil, err
+	}
+	return &Driver{
 		Location: location + "/",
-		FileMode: fileMode,
-		FileMeta: &FileMeta{
-			Location: location + "/",
-			FileMode: fileMode,
-		},
-	}
+		meta: meta,
+	}, nil
 }
 
-type File struct {
-	Location string
-	FileMode os.FileMode
-	FileMeta *FileMeta
+func (d *Driver) Meta() cache.Meta {
+	return d.meta
 }
 
-func (m *File) Meta() cache.Meta {
-	return m.FileMeta
-}
-
-func (m *File) Put(name string, contents interface{}) error {
-	_, err := os.Stat(filepath.Dir(name))
+func (d *Driver) Put(key string, contents interface{}) error {
+	_, err := os.Stat(filepath.Dir(key))
 	if os.IsNotExist(err) {
-		os.Mkdir(m.Location + filepath.Dir(name), m.FileMode)
+		os.Mkdir(d.Location + filepath.Dir(key), 0666)
 	}
 
 	reader, ok := contents.(io.Reader)
@@ -47,7 +47,7 @@ func (m *File) Put(name string, contents interface{}) error {
 		return errors.New("Interface should be a reader")
 	}
 
-	file, err := os.Create(m.Location + name)
+	file, err := os.Create(d.Location + key)
 	if err != nil {
 		return err
 	}
@@ -57,16 +57,16 @@ func (m *File) Put(name string, contents interface{}) error {
 	return err
 }
 
-func (m *File) Get(name string) (interface{}, error) {
-	return os.Open(m.Location + name)
+func (d *Driver) Get(key string) (interface{}, error) {
+	return os.Open(d.Location + key)
 }
 
-func (m *File) Exists(name string) bool {
-	_, err := os.Stat(m.Location + name)
+func (d *Driver) Exists(key string) bool {
+	_, err := os.Stat(d.Location + key)
 
 	return !os.IsNotExist(err)
 }
 
-func (m *File) Remove(name string) error {
-	return os.Remove(m.Location + name)
+func (d *Driver) Remove(key string) error {
+	return os.Remove(d.Location + key)
 }

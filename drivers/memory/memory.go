@@ -1,50 +1,50 @@
 package memory
 
 import (
-	"errors"
-	"time"
-	"github.com/joostlawerman/cache"
+	"sync"
 )
 
-func Driver() cache.Driver {
-	return &Memory{ Cache: make(map[string]interface{}), Meta: make(map[string]time.Time) }
+type Driver struct {
+	meta     *Meta
+	data    map[string]interface{}
+	sync.RWMutex
 }
 
-type Memory struct {
-	Meta map[string]time.Time
-	Cache map[string]interface{}
+func NewDriver() *Driver {
+	return &Driver{meta: NewMeta()}
 }
 
-func (m *Memory) GetMeta() (map[string]time.Time, error) {
-	return m.Meta, nil
+func (d *Driver) Meta() *Meta {
+	return d.meta
 }
 
-func (m *Memory) Put(name string, contents interface{}) error {
-	m.Meta[name] = time.Now()
+func (d *Driver) Put(key string, value interface{}) error {
+	d.Lock()
+	defer d.Unlock()
 
-	m.Cache[name] = contents
-
+	d.data[key] = value
 	return nil
 }
 
-func (m *Memory) Get(name string) (interface{}, error) {
-	if item, ok := m.Cache[name]; ok {
-		return item, nil
-	}
-	return nil, errors.New("Item does not exist")
+func (d *Driver) Get(key string) (interface{}, error) {
+	d.Lock()
+	defer d.Unlock()
+
+	return d.data[key], nil
 }
 
-func (m *Memory) Exists(name string) bool {
-	if _, ok := m.Cache[name]; ok {
-		return true
-	}
-	return false
+func (d *Driver) Exists(key string) bool {
+	d.Lock()
+	defer d.Unlock()
+
+	_, ok := d.data[key]
+	return ok
 }
 
-func (m *Memory) Remove(name string) error {
-	delete(m.Meta, name)
+func (d *Driver) Remove(key string) error {
+	d.Lock()
+	defer d.Unlock()
 
-	delete(m.Cache, name)
-
+	delete(d.data, key)
 	return nil
 }
