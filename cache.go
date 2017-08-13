@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"time"
 	"errors"
+	"time"
 )
 
 const ErrorItemIsExpired = "Item is expired"
@@ -13,15 +13,15 @@ const ErrorItemIsExpired = "Item is expired"
 type Cache struct {
 	duration time.Duration
 	interval time.Duration
-	close chan struct{}
-	driver Driver
+	close    chan struct{}
+	driver   Driver
 }
 
 // New creates a new *Cache
 func New(driver Driver, duration time.Duration) *Cache {
 	return &Cache{
 		duration: duration,
-		driver: driver,
+		driver:   driver,
 	}
 }
 
@@ -29,7 +29,9 @@ func New(driver Driver, duration time.Duration) *Cache {
 func Open(driver Driver, duration, interval time.Duration) *Cache {
 	cache := New(driver, duration)
 
-	cache.Schedule(interval)
+	if interval > 0 {
+		cache.Schedule(interval)
+	}
 
 	return cache
 }
@@ -100,7 +102,7 @@ func (c *Cache) Remember(key string, callback func() (interface{}, error)) (inte
 			return nil, err
 		}
 		if err := c.Put(key, value); err != nil {
-		return nil, err
+			return nil, err
 		}
 	}
 	return c.Get(key)
